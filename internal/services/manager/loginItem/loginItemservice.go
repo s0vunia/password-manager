@@ -1,4 +1,4 @@
-package manager
+package loginItem
 
 import (
 	"context"
@@ -10,55 +10,56 @@ import (
 )
 
 type ILoginItemService interface {
-	CreateLoginItem(ctx context.Context, item domain.LoginItem, userId uuid.UUID) (uuid.UUID, error)
+	CreateLoginItem(ctx context.Context, item domain.LoginItem) (uuid.UUID, error)
 	GetLoginItem(ctx context.Context, itemId, userId uuid.UUID) (*domain.LoginItem, error)
 	GetLoginItems(ctx context.Context, userId uuid.UUID) ([]*domain.LoginItem, error)
+	DeleteLoginItem(ctx context.Context, userId uuid.UUID, itemId uuid.UUID) error
 }
 
-type LoginItemService struct {
+type Service struct {
 	log               *slog.Logger
-	loginItemSaver    LoginItemSaver
-	loginItemProvider LoginItemProvider
+	loginItemSaver    Saver
+	loginItemProvider Provider
 }
 
-type LoginItemSaver interface {
-	SaveItem(ctx context.Context,
+type Saver interface {
+	CreateLoginItem(ctx context.Context,
 		item domain.LoginItem,
-		userId uuid.UUID,
 	) (uuid.UUID, error)
 }
 
-type LoginItemProvider interface {
-	GetItem(ctx context.Context,
+type Provider interface {
+	GetLoginItem(ctx context.Context,
 		itemId, userId uuid.UUID,
 	) (*domain.LoginItem, error)
-	GetItems(ctx context.Context,
+	GetLoginItems(ctx context.Context,
 		userId uuid.UUID) ([]*domain.LoginItem, error)
+	DeleteLoginItem(ctx context.Context, userId uuid.UUID, itemId uuid.UUID) error
 }
 
 func New(
 	log *slog.Logger,
-	saver LoginItemSaver,
-	provider LoginItemProvider,
-) *LoginItemService {
-	return &LoginItemService{
+	saver Saver,
+	provider Provider,
+) *Service {
+	return &Service{
 		log:               log,
 		loginItemSaver:    saver,
 		loginItemProvider: provider,
 	}
 }
 
-func (l *LoginItemService) CreateLoginItem(ctx context.Context, item domain.LoginItem, userId uuid.UUID) (uuid.UUID, error) {
+func (l *Service) CreateLoginItem(ctx context.Context, item domain.LoginItem) (uuid.UUID, error) {
 	const op = "LoginItemService.CreateLoginItem"
 
 	log := l.log.With(
 		slog.String("op", op),
-		slog.String("user", userId.String()),
 		slog.Any("item", item),
 	)
 
 	log.Info("attempting to create login item")
-	id, err := l.loginItemSaver.SaveItem(ctx, item, userId)
+
+	id, err := l.loginItemSaver.CreateLoginItem(ctx, item)
 	if err != nil {
 		log.Error("failed to create login item", sl.Err(err))
 
@@ -67,7 +68,7 @@ func (l *LoginItemService) CreateLoginItem(ctx context.Context, item domain.Logi
 	return id, nil
 }
 
-func (l *LoginItemService) GetLoginItem(ctx context.Context, itemId, userId uuid.UUID) (*domain.LoginItem, error) {
+func (l *Service) GetLoginItem(ctx context.Context, itemId, userId uuid.UUID) (*domain.LoginItem, error) {
 	const op = "LoginItemService.GetLoginItem"
 
 	log := l.log.With(
@@ -77,7 +78,7 @@ func (l *LoginItemService) GetLoginItem(ctx context.Context, itemId, userId uuid
 	)
 
 	log.Info("attempting to get login item")
-	item, err := l.loginItemProvider.GetItem(ctx, itemId, userId)
+	item, err := l.loginItemProvider.GetLoginItem(ctx, itemId, userId)
 	if err != nil {
 		log.Error("failed to get login item", sl.Err(err))
 
@@ -87,7 +88,7 @@ func (l *LoginItemService) GetLoginItem(ctx context.Context, itemId, userId uuid
 
 }
 
-func (l *LoginItemService) GetLoginItems(ctx context.Context, userId uuid.UUID) ([]*domain.LoginItem, error) {
+func (l *Service) GetLoginItems(ctx context.Context, userId uuid.UUID) ([]*domain.LoginItem, error) {
 	const op = "LoginItemService.GetLoginItems"
 
 	log := l.log.With(
@@ -96,11 +97,27 @@ func (l *LoginItemService) GetLoginItems(ctx context.Context, userId uuid.UUID) 
 	)
 
 	log.Info("attempting to get login itemS")
-	items, err := l.loginItemProvider.GetItems(ctx, userId)
+	items, err := l.loginItemProvider.GetLoginItems(ctx, userId)
 
 	if err != nil {
 		log.Error("failed to get login itemS", sl.Err(err))
 		return make([]*domain.LoginItem, 0), fmt.Errorf("%s: %w", op, err)
 	}
 	return items, nil
+}
+func (l *Service) DeleteLoginItem(ctx context.Context, userId uuid.UUID, itemId uuid.UUID) error {
+	const op = "LoginItemService.DeleteLoginItem"
+
+	log := l.log.With(
+		slog.String("op", op),
+		slog.String("user", userId.String()),
+	)
+
+	log.Info("attempting to delete login item")
+	err := l.loginItemProvider.DeleteLoginItem(ctx, userId, itemId)
+	if err != nil {
+		log.Error("failed to delete login item", sl.Err(err))
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
 }

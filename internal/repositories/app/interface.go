@@ -6,5 +6,5 @@ import (
 )
 
 type Repository interface {
-	App(ctx context.Context, appID int) (domain.App, error)
+	App(ctx context.Context, appID int64) (domain.App, error)
 }

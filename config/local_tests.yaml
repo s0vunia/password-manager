@@ -1,0 +1,10 @@
+env: "local"
+grpc:
+  port: 44044
+  timeout: 5s
+postgres:
+  host: postgres
+  port: 5432
+  db_name: testttdb
+  user: testttuser
+  password: testttpass

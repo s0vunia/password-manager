@@ -28,8 +28,8 @@ func NewPostgresRepository(dataSourceName string) (*PostgresRepository, error) {
 	return &PostgresRepository{db}, nil
 }
 
-func (s *PostgresRepository) App(ctx context.Context, id int) (domain.App, error) {
-	const op = "repositories.postgres.App"
+func (s *PostgresRepository) App(ctx context.Context, id int64) (domain.App, error) {
+	const op = "repositories.app.postgres.App"
 
 	stmt, err := s.db.Prepare("SELECT id, name, secret FROM apps WHERE id = $1")
 	if err != nil {
